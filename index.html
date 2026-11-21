@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>We miss you.</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
+body{cursor:default;user-select:none}
+.scene{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;background:#000}
+.scene-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(.72) saturate(.75);}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 43%,transparent 18%,rgba(0,0,0,.32) 53%,rgba(0,0,0,.83) 100%);}
+.shadow-dark{position:absolute;inset:0;background:rgba(0,0,0,.12);pointer-events:none}
+.phone-hotspot{position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);width:min(43vw,470px);height:min(36vh,260px);background:transparent;border:0;cursor:pointer;border-radius:45%;-webkit-tap-highlight-color:transparent;outline:none}
+.phone-hotspot:focus-visible{outline:1px solid rgba(200,190,210,.22);outline-offset:4px}
+@media(max-width:700px){.scene-image{object-fit:cover;object-position:center}.phone-hotspot{width:76vw;height:35vh;top:54%}}
+</style>
+</head>
+<body>We miss you
+<main class="scene" id="scene" aria-label="A dark room">
+<img class="scene-image" src="phone-scene.png" alt="">
+<div class="vignette"></div><div class="shadow-dark"></div>
+<button class="phone-hotspot" id="phone" aria-label="Answer the telephone"></button>
+</main>
+<audio id="ring" src="audio/ringing.mp3" preload="auto" loop></audio>
+<audio id="voicemail" src="voicemail/Restored Voicemail.mp3" preload="auto"></audio>
+<script>
+const scene=document.getElementById('scene'), phone=document.getElementById('phone'), ring=document.getElementById('ring'), voicemail=document.getElementById('voicemail');
+let ringing=false, answered=false, audioCtx=null, ambient=null, ambientGain=null, noiseSrc=null, noiseGain=null;
+function beginRinging(){if(ringing||answered)return;ringing=true;ring.volume=0.92;ring.currentTime=0;ring.play().catch(()=>{});startAmbience();}
+function startAmbience(){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();osc.type='sine';osc.frequency.value=38;filter.type='lowpass';filter.frequency.value=95;gain.gain.value=.055;osc.connect(filter);filter.connect(gain);gain.connect(audioCtx.destination);osc.start();ambient=osc;ambientGain=gain;
+const buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*3,audioCtx.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1);noiseSrc=audioCtx.createBufferSource();noiseSrc.buffer=buffer;noiseSrc.loop=true;const nf=audioCtx.createBiquadFilter();nf.type='lowpass';nf.frequency.value=150;noiseGain=audioCtx.createGain();noiseGain.gain.value=.009;noiseSrc.connect(nf);nf.connect(noiseGain);noiseGain.connect(audioCtx.destination);noiseSrc.start();}catch(e){}}
+function answerPhone(){if(!ringing){beginRinging();return;}if(answered)return;answered=true;ring.pause();ring.currentTime=0;if(ambientGain)ambientGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.12);if(noiseGain)noiseGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.12);try{if(ambient)ambient.stop(audioCtx.currentTime+0.3);if(noiseSrc)noiseSrc.stop(audioCtx.currentTime+0.3)}catch(e){}voicemail.volume=1;voicemail.play().catch(()=>{});}
+scene.addEventListener('click',e=>{if(e.target===phone)return;if(!ringing&&!answered)beginRinging();});
+phone.addEventListener('click',e=>{e.stopPropagation();answerPhone();});
+</script>
+</body>
+</html>
